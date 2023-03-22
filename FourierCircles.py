@@ -18,15 +18,17 @@ class FourierManim(Scene):
             'stroke_width':.3
         },
         'low_factor':0.5,
+        'random_seed':[-1,1],
     }
     def construct(self):
+        aleatorio=it.cycle(self.CONFIG['random_seed'])
         vectors= self.get_rotating_vectors()
         circles= self.get_circles(vectors)
         self.add(vectors,circles)
         self.wait(self.CONFIG['wait_time'])
     def get_freqs(self):
         n=self.CONFIG['n_vectors']
-        return reversed(list(-np.linspace(0.3,1,n)))
+        return reversed(list(np.linspace(0.3,1,n)))
     def get_coefficients(self):
         n=self.CONFIG['n_vectors']
         return [complex(n*.2) for _ in reversed(range(n))]
@@ -38,20 +40,26 @@ class FourierManim(Scene):
         if coeffs is None:
             coeffs=self.get_coefficients()
         last_vector=None
-        for freq, coeff in zip(freqs, coeffs):
+        for freq, coeff, i in zip(freqs, coeffs, it.count(1)):
             if last_vector:
                 center_func= last_vector.get_end
             else:
                 center_func=self.center_tracker.get_location
-            vector=self.get_rotating_vector(coeff,freq,center_func)
+            random=np.random.random()
+            if random<.5:
+                spin=-1
+            else:
+                spin=1
+            vector=self.get_rotating_vector(coeff/i,freq,center_func,spin=spin)
             vectors.add(vector)
             last_vector=vector
         return vectors
-    def get_rotating_vector(self,coeff,freq,center_func):
+    def get_rotating_vector(self,coeff,freq,center_func, spin):
         vector=Vector(**self.CONFIG['vector_config'])
         vector.coeff=coeff
         vector.freq=freq
         vector.center_func=center_func
+        vector.spin=spin
         vector.scale(2)
         vector.add_updater(self.update_vector)
         return vector
@@ -59,7 +67,7 @@ class FourierManim(Scene):
         time=self.CONFIG['vector_time'].get_value()
         vector.set_length(vector.coeff.real)
         random=np.random.random()
-        vector.rotate((time+dt)*vector.freq,about_point=vector.get_start())
+        vector.rotate(vector.spin*(time+dt)*vector.freq,about_point=vector.get_start())
         vector.shift(vector.center_func()-vector.get_start())
     def get_circle(self,vector,color=None):
         if color is None:
